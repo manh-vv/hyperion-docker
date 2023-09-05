@@ -2,3 +2,5 @@
 ship/
 nodeos/leap/data
 ca.crt
+
+.env
