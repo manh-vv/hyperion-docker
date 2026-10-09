@@ -246,6 +246,7 @@ services:
   redis:
     profiles:
       - redis
+      - infra
       - hyperion
     container_name: redis
     image: redis:7.0.11-alpine
@@ -260,6 +261,7 @@ services:
   rabbitmq:
     profiles:
       - rabbitmq
+      - infra
       - hyperion
     container_name: rabbitmq
     image: rabbitmq:3.11.15-management
@@ -312,13 +314,13 @@ volumes:
     driver_opts:
       o: bind
       type: none
-      device: /mnt/da/rabbitmq
+      device: /home/alcor/d/rabbitmq
   redis:
     driver: local
     driver_opts:
       o: bind
       type: none
-      device: /mnt/da/redis
+      device: /home/alcor/d/redis
 
 networks:
   hyperion:
