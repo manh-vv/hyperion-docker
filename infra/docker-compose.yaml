@@ -251,6 +251,17 @@ services:
     container_name: redis
     image: redis:7.0.11-alpine
     restart: on-failure
+    # The host also runs nodeos and Elasticsearch, so no container may grow
+    # into their RAM. maxmemory sits well under mem_limit to leave room for
+    # the copy-on-write fork an RDB save makes, so redis evicts before the
+    # kernel kills it. allkeys-lru because ~90% of keys are
+    # stats:<chain>:total:404:<path> counters with no TTL (one per path a
+    # scanner tries); they are the coldest keys and the first to go.
+    command: ["redis-server", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    mem_limit: 1g
+    # Equal to mem_limit: no swap on top of the cap. The host is already deep
+    # in swap.
+    memswap_limit: 1g
     volumes:
       - redis:/data
     ports:
@@ -270,8 +281,16 @@ services:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
       - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_VHOST}
+    # The default watermark is 0.4 of host RAM (~27G here) and ignores swap,
+    # so a Hyperion backlog could take that much before flow control starts.
+    # 20-memory.conf sets an absolute 2GB watermark: past it RabbitMQ blocks
+    # publishers (the indexer slows down) instead of eating RAM. mem_limit
+    # leaves headroom above the watermark, which RabbitMQ can overshoot.
+    mem_limit: 4g
+    memswap_limit: 4g
     volumes:
       - rabbitmq:/var/lib/rabbitmq
+      - ./rabbitmq/20-memory.conf:/etc/rabbitmq/conf.d/20-memory.conf:ro
     ports:
       - "5672:5672"
       - "15672:15672"
